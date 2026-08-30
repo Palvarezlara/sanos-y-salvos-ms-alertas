@@ -1,0 +1,53 @@
+spring:
+  # Carga variables desde el archivo .env en la raíz del proyecto (formato
+  # KEY=VALOR), si existe — así no hace falta exportarlas a mano en local.
+  # "optional:" evita que falle si el archivo no está (ej. en CI, donde las
+  # variables reales vienen del entorno de despliegue, no de un .env).
+  config:
+    import: optional:file:.env[.properties]
+  application:
+    name: ms-alertas
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/alertas_db}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      # "update" es cómodo en desarrollo; para RDS en un entorno real conviene
+      # migrar a Flyway/Liquibase en vez de dejar que Hibernate toque el schema.
+      ddl-auto: update
+    show-sql: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://cognito-idp.${cognito.region}.amazonaws.com/${cognito.user-pool-id}
+          jwk-set-uri: https://cognito-idp.${cognito.region}.amazonaws.com/${cognito.user-pool-id}/.well-known/jwks.json
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: ${PORT:8083}
+
+cognito:
+  region: ${COGNITO_REGION:us-east-1}
+  user-pool-id: ${COGNITO_USER_POOL_ID}
+  client-id: ${COGNITO_CLIENT_ID}
+
+contacto:
+  # Con Gmail, el remitente debe ser la misma cuenta autenticada (o un alias
+  # "Enviar como" verificado en esa cuenta) — Gmail rechaza o reescribe el
+  # From si no coincide. Por eso el default es el mismo MAIL_USERNAME.
+  remitente: ${CONTACTO_REMITENTE:${spring.mail.username}}
+
+ms-mascotas:
+  base-url: ${MS_MASCOTAS_BASE_URL:http://localhost:8082}

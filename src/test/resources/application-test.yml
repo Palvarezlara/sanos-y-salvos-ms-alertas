@@ -1,0 +1,20 @@
+# Overlay de valores dummy usados solo en tests, para que el contexto de
+# Spring cargue sin depender de credenciales reales de Cognito ni de Brevo.
+# Se activa con @ActiveProfiles("test") y se combina con application.yml.
+cognito:
+  region: us-east-1
+  user-pool-id: us-east-1_test00000
+  client-id: test-client-id
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:alertasdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  mail:
+    username: test@example.com
+    password: test-password

@@ -6,7 +6,16 @@ cognito:
   user-pool-id: us-east-1_test00000
   client-id: test-client-id
 
+eureka:
+  client:
+    enabled: false   # no intentar registrarse en Eureka durante los tests
+
 spring:
+  config:
+    import: ""   # no intentar contactar al config-server durante los tests
+  cloud:
+    config:
+      enabled: false
   datasource:
     url: jdbc:h2:mem:alertasdb;DB_CLOSE_DELAY=-1
     driver-class-name: org.h2.Driver

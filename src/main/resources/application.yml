@@ -1,3 +1,9 @@
+# Reducido a propósito (12-sep-2026): mismo patrón que el proyecto anterior
+# (Ticketti/MS-FULLSTACK) — el resto de la configuración (datasource, JPA,
+# Cognito, mail, Eureka, contacto, ms-mascotas.base-url) vive en
+# sanos-y-salvos-config_server/config/ms-alertas.yml, no acá. Antes este
+# archivo tenía todo local ADEMÁS de apuntar al config-server, así que el
+# config-server no cumplía ningún rol real para este servicio.
 spring:
   # Carga variables desde el archivo .env en la raíz del proyecto (formato
   # KEY=VALOR), si existe — así no hace falta exportarlas a mano en local.
@@ -7,60 +13,3 @@ spring:
     import: "optional:file:.env[.properties],optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
   application:
     name: ms-alertas
-  datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/alertas_db}
-    username: ${DB_USER:root}
-    password: ${DB_PASSWORD:}
-  jpa:
-    hibernate:
-      # "update" es cómodo en desarrollo; para RDS en un entorno real conviene
-      # migrar a Flyway/Liquibase en vez de dejar que Hibernate toque el schema.
-      ddl-auto: update
-    show-sql: false
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: https://cognito-idp.${cognito.region}.amazonaws.com/${cognito.user-pool-id}
-          jwk-set-uri: https://cognito-idp.${cognito.region}.amazonaws.com/${cognito.user-pool-id}/.well-known/jwks.json
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-server:
-  port: ${PORT:8083}
-
-# Eureka client — mismo patrón que el BFF (BFF-Backend-for-Frontend-Cloud-native)
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
-    registry-fetch-interval-seconds: 5
-  instance:
-    prefer-ip-address: true
-    lease-renewal-interval-in-seconds: 5
-    lease-expiration-duration-in-seconds: 15
-    status-page-url-path: /actuator/health
-    health-check-url-path: /actuator/health
-
-cognito:
-  region: ${COGNITO_REGION:us-east-1}
-  user-pool-id: ${COGNITO_USER_POOL_ID}
-  client-id: ${COGNITO_CLIENT_ID}
-
-contacto:
-  # Con Gmail, el remitente debe ser la misma cuenta autenticada (o un alias
-  # "Enviar como" verificado en esa cuenta) — Gmail rechaza o reescribe el
-  # From si no coincide. Por eso el default es el mismo MAIL_USERNAME.
-  remitente: ${CONTACTO_REMITENTE:${spring.mail.username}}
-
-ms-mascotas:
-  base-url: ${MS_MASCOTAS_BASE_URL:http://localhost:8082}

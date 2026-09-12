@@ -25,5 +25,29 @@ spring:
     hibernate:
       ddl-auto: create-drop
   mail:
+    # host es obligatorio para que MailSenderAutoConfiguration registre el
+    # bean JavaMailSender — antes venía con default en el application.yml base.
+    host: smtp.gmail.com
+    port: 587
     username: test@example.com
     password: test-password
+  # Antes se armaban a partir de cognito.region/user-pool-id en el
+  # application.yml base (ya movido a sanos-y-salvos-config_server) — hay
+  # que declararlos directos acá porque el import al config-server está
+  # deshabilitado en este perfil.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test00000
+          jwk-set-uri: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_test00000/.well-known/jwks.json
+
+# Antes venían con default en el application.yml base (junto con el resto
+# de la config, ya movida a sanos-y-salvos-config_server) — como el import
+# al config-server está deshabilitado en este perfil, hay que declararlos
+# acá para que el contexto cargue.
+contacto:
+  remitente: test@example.com
+
+ms-mascotas:
+  base-url: http://localhost:8082

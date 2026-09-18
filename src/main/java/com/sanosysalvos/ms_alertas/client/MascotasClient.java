@@ -19,8 +19,10 @@ public class MascotasClient {
     }
 
     public MascotaContactoDto obtenerContacto(String mascotaId) {
+        /* ms-mascotas sirve todo bajo /api/v1 (SPRING_MVC_SERVLET_PATH); sin el
+         * prefijo la petición no matcheaba el permitAll de /internal/** y caía en 401 */
         return restClient.get()
-                .uri("/internal/mascotas/{id}/contacto", mascotaId)
+                .uri("/api/v1/internal/mascotas/{id}/contacto", mascotaId)
                 .retrieve()
                 .body(MascotaContactoDto.class);
     }

@@ -39,10 +39,17 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health").permitAll()
+                // ###################################
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                // ###################################
                 // Lectura de alertas de zona/mapa es de acceso libre para invitados,
                 // igual que Home/Listado en ms-mascotas (ver CLAUDE.md). Crear,
                 // actualizar o eliminar sigue requiriendo un access_token válido.
                 .requestMatchers(HttpMethod.GET, "/alertas", "/alertas/zona").permitAll()
+                // ###################################
+                // cualquiera que encuentre una mascota puede contactar, sin cuenta
+                .requestMatchers(HttpMethod.POST, "/contactos").permitAll()
+                // ###################################
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

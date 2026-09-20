@@ -52,6 +52,9 @@ services:
       COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      # sin esto quedaba en el default (localhost:8082, el propio contenedor)
+      # y la resolución de contacto contra ms-mascotas fallaba siempre
+      MS_MASCOTAS_BASE_URL: http://ms-mascotas:8082
 
 volumes:
   ms-alertas-mysql-data:

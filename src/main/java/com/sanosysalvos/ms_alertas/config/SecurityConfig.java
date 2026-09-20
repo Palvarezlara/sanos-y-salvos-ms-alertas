@@ -43,6 +43,8 @@ public class SecurityConfig {
                 // igual que Home/Listado en ms-mascotas (ver CLAUDE.md). Crear,
                 // actualizar o eliminar sigue requiriendo un access_token válido.
                 .requestMatchers(HttpMethod.GET, "/alertas", "/alertas/zona").permitAll()
+                // cualquiera que encuentre una mascota puede avisar, sin necesitar cuenta
+                .requestMatchers(HttpMethod.POST, "/contactos").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

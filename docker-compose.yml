@@ -19,12 +19,29 @@ services:
     networks:
       - sanos-y-salvos-network
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: ms-alertas-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "15672:15672" # consola de administracion, http://localhost:15672 (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - sanos-y-salvos-network
+
   ms-alertas:
     build: .
     container_name: ms-alertas
     restart: unless-stopped
     depends_on:
       mysql:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     ports:
       - "8083:8083"
@@ -55,7 +72,8 @@ services:
       COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
-      # sin esto quedaba en http://localhost:8082 (el propio contenedor), no ms-mascotas
+      RABBITMQ_HOST: rabbitmq
+      
       MS_MASCOTAS_BASE_URL: http://ms-mascotas:8082
 
 volumes:

@@ -3,6 +3,8 @@ package com.sanosysalvos.ms_alertas.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,10 +14,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import com.sanosysalvos.ms_alertas.client.MascotasClient;
+import com.sanosysalvos.ms_alertas.config.RabbitMQConfig;
+import com.sanosysalvos.ms_alertas.dto.ContactoMensajeDto;
 import com.sanosysalvos.ms_alertas.dto.ContactoRequestDto;
 import com.sanosysalvos.ms_alertas.dto.MascotaContactoDto;
 import com.sanosysalvos.ms_alertas.exception.ResourceNotFoundException;
@@ -24,19 +27,17 @@ import com.sanosysalvos.ms_alertas.service.impl.ContactoServiceImpl;
 @ExtendWith(MockitoExtension.class)
 class ContactoServiceImplTest {
 
-    private static final String REMITENTE = "notificaciones@sanosysalvos.cl";
-
     @Mock
     private MascotasClient mascotasClient;
 
     @Mock
-    private JavaMailSender mailSender;
+    private RabbitTemplate rabbitTemplate;
 
     private ContactoService contactoService;
 
     @BeforeEach
     void setUp() {
-        contactoService = new ContactoServiceImpl(mascotasClient, mailSender, REMITENTE);
+        contactoService = new ContactoServiceImpl(mascotasClient, rabbitTemplate);
     }
 
     private ContactoRequestDto crearRequest() {
@@ -50,21 +51,23 @@ class ContactoServiceImplTest {
     }
 
     @Test
-    void contactar_envia_correo_al_dueno_con_replyTo_del_contactante() {
+    void contactar_publica_el_mensaje_con_el_destinatario_resuelto() {
         ContactoRequestDto request = crearRequest();
         when(mascotasClient.obtenerContacto(request.getMascotaId()))
                 .thenReturn(new MascotaContactoDto(request.getMascotaId(), "duena@example.com", "Luna"));
 
         contactoService.contactar(request);
 
-        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        verify(mailSender).send(captor.capture());
+        ArgumentCaptor<ContactoMensajeDto> captor = ArgumentCaptor.forClass(ContactoMensajeDto.class);
+        verify(rabbitTemplate).convertAndSend(
+                eq(RabbitMQConfig.EXCHANGE), eq(RabbitMQConfig.ROUTING_KEY_CONTACTO), captor.capture());
 
-        SimpleMailMessage enviado = captor.getValue();
-        assertThat(enviado.getFrom()).isEqualTo(REMITENTE);
-        assertThat(enviado.getTo()).containsExactly("duena@example.com");
-        assertThat(enviado.getReplyTo()).isEqualTo(request.getEmailContacto());
-        assertThat(enviado.getText()).contains("Luna", request.getMensaje(), request.getNombreContacto());
+        ContactoMensajeDto publicado = captor.getValue();
+        assertThat(publicado.getEmailDestino()).isEqualTo("duena@example.com");
+        assertThat(publicado.getNombreMascota()).isEqualTo("Luna");
+        assertThat(publicado.getEmailContacto()).isEqualTo(request.getEmailContacto());
+        assertThat(publicado.getNombreContacto()).isEqualTo(request.getNombreContacto());
+        assertThat(publicado.getMensaje()).isEqualTo(request.getMensaje());
     }
 
     @Test
@@ -75,6 +78,6 @@ class ContactoServiceImplTest {
         assertThatThrownBy(() -> contactoService.contactar(request))
                 .isInstanceOf(ResourceNotFoundException.class);
 
-        verify(mailSender, org.mockito.Mockito.never()).send(any(SimpleMailMessage.class));
+        verify(rabbitTemplate, never()).convertAndSend(any(String.class), any(String.class), any(Object.class));
     }
 }

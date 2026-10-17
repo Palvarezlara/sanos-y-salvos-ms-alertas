@@ -11,7 +11,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sanosysalvos.ms_alertas.dto.ContactoMensajeDto;
+
+import software.amazon.awssdk.services.sqs.SqsClient;
 
 import static org.mockito.Mockito.verify;
 
@@ -23,11 +26,16 @@ class ContactoMailListenerTest {
     @Mock
     private JavaMailSender mailSender;
 
+    @Mock
+    private SqsClient sqsClient;
+
     private ContactoMailListener listener;
 
     @BeforeEach
     void setUp() {
-        listener = new ContactoMailListener(mailSender, REMITENTE);
+        // autoArranque=false: no levanta el hilo real de polling en el test
+        listener = new ContactoMailListener(sqsClient, "http://dummy/cola-contacto", false,
+                mailSender, REMITENTE, new ObjectMapper());
     }
 
     @Test

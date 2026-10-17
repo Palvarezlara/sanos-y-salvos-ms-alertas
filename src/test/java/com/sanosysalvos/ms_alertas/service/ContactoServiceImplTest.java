@@ -14,14 +14,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import com.sanosysalvos.ms_alertas.client.MascotasClient;
-import com.sanosysalvos.ms_alertas.config.RabbitMQConfig;
 import com.sanosysalvos.ms_alertas.dto.ContactoMensajeDto;
 import com.sanosysalvos.ms_alertas.dto.ContactoRequestDto;
 import com.sanosysalvos.ms_alertas.dto.MascotaContactoDto;
 import com.sanosysalvos.ms_alertas.exception.ResourceNotFoundException;
+import com.sanosysalvos.ms_alertas.messaging.SnsEventPublisher;
 import com.sanosysalvos.ms_alertas.service.impl.ContactoServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,13 +30,13 @@ class ContactoServiceImplTest {
     private MascotasClient mascotasClient;
 
     @Mock
-    private RabbitTemplate rabbitTemplate;
+    private SnsEventPublisher snsEventPublisher;
 
     private ContactoService contactoService;
 
     @BeforeEach
     void setUp() {
-        contactoService = new ContactoServiceImpl(mascotasClient, rabbitTemplate);
+        contactoService = new ContactoServiceImpl(mascotasClient, snsEventPublisher);
     }
 
     private ContactoRequestDto crearRequest() {
@@ -58,11 +57,10 @@ class ContactoServiceImplTest {
 
         contactoService.contactar(request);
 
-        ArgumentCaptor<ContactoMensajeDto> captor = ArgumentCaptor.forClass(ContactoMensajeDto.class);
-        verify(rabbitTemplate).convertAndSend(
-                eq(RabbitMQConfig.EXCHANGE), eq(RabbitMQConfig.ROUTING_KEY_CONTACTO), captor.capture());
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(snsEventPublisher).publicar(eq(ContactoServiceImpl.TIPO_EVENTO_CONTACTO), captor.capture());
 
-        ContactoMensajeDto publicado = captor.getValue();
+        ContactoMensajeDto publicado = (ContactoMensajeDto) captor.getValue();
         assertThat(publicado.getEmailDestino()).isEqualTo("duena@example.com");
         assertThat(publicado.getNombreMascota()).isEqualTo("Luna");
         assertThat(publicado.getEmailContacto()).isEqualTo(request.getEmailContacto());
@@ -78,6 +76,6 @@ class ContactoServiceImplTest {
         assertThatThrownBy(() -> contactoService.contactar(request))
                 .isInstanceOf(ResourceNotFoundException.class);
 
-        verify(rabbitTemplate, never()).convertAndSend(any(String.class), any(String.class), any(Object.class));
+        verify(snsEventPublisher, never()).publicar(any(String.class), any(Object.class));
     }
 }

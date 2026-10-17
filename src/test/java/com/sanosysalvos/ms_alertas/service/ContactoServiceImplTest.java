@@ -53,7 +53,7 @@ class ContactoServiceImplTest {
     void contactar_publica_el_mensaje_con_el_destinatario_resuelto() {
         ContactoRequestDto request = crearRequest();
         when(mascotasClient.obtenerContacto(request.getMascotaId()))
-                .thenReturn(new MascotaContactoDto(request.getMascotaId(), "duena@example.com", "Luna"));
+                .thenReturn(new MascotaContactoDto(request.getMascotaId(), "duena@example.com", "Luna", "token-abc"));
 
         contactoService.contactar(request);
 
@@ -66,6 +66,7 @@ class ContactoServiceImplTest {
         assertThat(publicado.getEmailContacto()).isEqualTo(request.getEmailContacto());
         assertThat(publicado.getNombreContacto()).isEqualTo(request.getNombreContacto());
         assertThat(publicado.getMensaje()).isEqualTo(request.getMensaje());
+        assertThat(publicado.getTokenReunificacion()).isEqualTo("token-abc");
     }
 
     @Test

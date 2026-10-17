@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Lo que viaja por la cola de RabbitMQ entre ContactoServiceImpl (publica) y
+ * Lo que viaja por SNS/SQS entre ContactoServiceImpl (publica) y
  * ContactoMailListener (consume y recién ahí envía el correo). Ya trae el
  * destinatario resuelto, para que el listener no tenga que volver a llamar a
  * ms-mascotas.
@@ -23,4 +23,7 @@ public class ContactoMensajeDto implements Serializable {
     private String emailContacto;
     private String telefonoContacto;
     private String mensaje;
+    // Para armar, en el correo, el link de confirmación de reunificación
+    // (ver MascotaService.confirmarReunificacion en ms-mascotas).
+    private String tokenReunificacion;
 }

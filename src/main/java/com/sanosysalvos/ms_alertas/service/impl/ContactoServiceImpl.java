@@ -41,7 +41,8 @@ public class ContactoServiceImpl implements ContactoService {
                 dto.getNombreContacto(),
                 dto.getEmailContacto(),
                 dto.getTelefonoContacto(),
-                dto.getMensaje());
+                dto.getMensaje(),
+                destino.getTokenReunificacion());
 
         snsEventPublisher.publicar(TIPO_EVENTO_CONTACTO, mensaje);
 

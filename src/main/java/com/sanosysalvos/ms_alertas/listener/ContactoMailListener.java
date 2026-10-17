@@ -30,6 +30,7 @@ public class ContactoMailListener extends SqsPollingConsumer {
     private final JavaMailSender mailSender;
     private final String remitente;
     private final ObjectMapper objectMapper;
+    private final String frontendUrl;
 
     public ContactoMailListener(
             SqsClient sqsClient,
@@ -37,11 +38,13 @@ public class ContactoMailListener extends SqsPollingConsumer {
             @Value("${sqs.consumidor.auto-arranque:true}") boolean autoArranque,
             JavaMailSender mailSender,
             @Value("${contacto.remitente}") String remitente,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            @Value("${frontend.url}") String frontendUrl) {
         super(sqsClient, queueUrl, autoArranque);
         this.mailSender = mailSender;
         this.remitente = remitente;
         this.objectMapper = objectMapper;
+        this.frontendUrl = frontendUrl;
     }
 
     @Override
@@ -77,6 +80,16 @@ public class ContactoMailListener extends SqsPollingConsumer {
             cuerpo.append("Teléfono: ").append(mensaje.getTelefonoContacto()).append('\n');
         }
         cuerpo.append("\nPuedes responder directamente a este correo para contactar a esta persona.\n\n");
+        if (mensaje.getTokenReunificacion() != null && !mensaje.getTokenReunificacion().isBlank()) {
+            cuerpo.append("¿Esta persona te ayudó a recuperar a ").append(mensaje.getNombreMascota()).append("?\n");
+            cuerpo.append("Confirma la reunificación acá: ")
+                    .append(frontendUrl)
+                    .append("/confirmar-reunificacion/")
+                    .append(mensaje.getMascotaId())
+                    .append("?token=")
+                    .append(mensaje.getTokenReunificacion())
+                    .append("\n\n");
+        }
         cuerpo.append("— Sanos y Salvos");
         return cuerpo.toString();
     }

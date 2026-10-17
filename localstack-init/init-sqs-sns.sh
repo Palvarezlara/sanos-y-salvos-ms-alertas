@@ -36,5 +36,6 @@ EOF
 
 crear_cola "cola-contacto" "contacto.solicitado"
 crear_cola "cola-mascota-reportada" "mascota.reportada"
+crear_cola "cola-mascota-reunificada" "mascota.reunificada"
 
 echo "LocalStack listo."

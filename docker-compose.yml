@@ -87,6 +87,7 @@ services:
       AWS_SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:sanos-eventos
       SQS_COLA_CONTACTO_URL: http://localstack:4566/000000000000/cola-contacto
       SQS_COLA_MASCOTA_REPORTADA_URL: http://localstack:4566/000000000000/cola-mascota-reportada
+      SQS_COLA_MASCOTA_REUNIFICADA_URL: http://localstack:4566/000000000000/cola-mascota-reunificada
 
 volumes:
   ms-alertas-mysql-data:

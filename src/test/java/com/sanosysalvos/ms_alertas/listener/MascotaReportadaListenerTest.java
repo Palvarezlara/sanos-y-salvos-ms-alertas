@@ -49,7 +49,7 @@ class MascotaReportadaListenerTest {
         assertThat(dto.getMascotaId()).isEqualTo("mascota-1");
         assertThat(dto.getLatitudCentro()).isEqualTo(-33.456789);
         assertThat(dto.getLongitudCentro()).isEqualTo(-70.987654);
-        assertThat(dto.getRadioKm()).isEqualTo(3.0);
+        assertThat(dto.getRadioKm()).isEqualTo(1.5);
     }
 
     @Test

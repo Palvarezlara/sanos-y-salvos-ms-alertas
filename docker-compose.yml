@@ -19,14 +19,18 @@ services:
     networks:
       - sanos-y-salvos-network
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: ms-alertas-rabbitmq
+  localstack:
+    image: localstack/localstack:3
+    container_name: ms-alertas-localstack
     restart: unless-stopped
+    environment:
+      SERVICES: sns,sqs
     ports:
-      - "15672:15672" # consola de administracion, http://localhost:15672 (guest/guest)
+      - "4566:4566" # edge port: aca se ven los recursos con awslocal / la consola web
+    volumes:
+      - ./localstack-init:/etc/localstack/init/ready.d
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD", "curl", "-sf", "http://localhost:4566/_localstack/health"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -41,7 +45,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      rabbitmq:
+      localstack:
         condition: service_healthy
     ports:
       - "8083:8083"
@@ -72,9 +76,21 @@ services:
       COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID}
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
-      RABBITMQ_HOST: rabbitmq
-      
       MS_MASCOTAS_BASE_URL: http://ms-mascotas:8082
+      # Para armar el link de confirmación de reunificación en el correo de
+      # contacto. En AWS esto apunta al dominio real del frontend (Vercel).
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # LocalStack en vez de AWS real: no depende de la sesion del lab para
+      # probar la mensajeria local. En AWS estas variables se sobrescriben
+      # (ver terraform/locals.tf) y AWS_ENDPOINT_OVERRIDE queda vacio.
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_OVERRIDE: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_SNS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:sanos-eventos
+      SQS_COLA_CONTACTO_URL: http://localstack:4566/000000000000/cola-contacto
+      SQS_COLA_MASCOTA_REPORTADA_URL: http://localstack:4566/000000000000/cola-mascota-reportada
+      SQS_COLA_MASCOTA_REUNIFICADA_URL: http://localstack:4566/000000000000/cola-mascota-reunificada
 
 volumes:
   ms-alertas-mysql-data:

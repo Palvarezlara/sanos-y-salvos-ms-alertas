@@ -15,4 +15,7 @@ public class MascotaContactoDto {
     private String mascotaId;
     private String emailDestino;
     private String nombreMascota;
+    // Para armar el link de confirmación de reunificación en el correo de
+    // contacto (ver ContactoServiceImpl / ContactoMailListener).
+    private String tokenReunificacion;
 }

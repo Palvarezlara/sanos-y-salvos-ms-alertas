@@ -2,15 +2,14 @@ package com.sanosysalvos.ms_alertas.service.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
 import com.sanosysalvos.ms_alertas.client.MascotasClient;
-import com.sanosysalvos.ms_alertas.config.RabbitMQConfig;
 import com.sanosysalvos.ms_alertas.dto.ContactoMensajeDto;
 import com.sanosysalvos.ms_alertas.dto.ContactoRequestDto;
 import com.sanosysalvos.ms_alertas.dto.MascotaContactoDto;
 import com.sanosysalvos.ms_alertas.exception.ResourceNotFoundException;
+import com.sanosysalvos.ms_alertas.messaging.SnsEventPublisher;
 import com.sanosysalvos.ms_alertas.service.ContactoService;
 
 @Service
@@ -18,12 +17,14 @@ public class ContactoServiceImpl implements ContactoService {
 
     private static final Logger log = LoggerFactory.getLogger(ContactoServiceImpl.class);
 
-    private final MascotasClient mascotasClient;
-    private final RabbitTemplate rabbitTemplate;
+    public static final String TIPO_EVENTO_CONTACTO = "contacto.solicitado";
 
-    public ContactoServiceImpl(MascotasClient mascotasClient, RabbitTemplate rabbitTemplate) {
+    private final MascotasClient mascotasClient;
+    private final SnsEventPublisher snsEventPublisher;
+
+    public ContactoServiceImpl(MascotasClient mascotasClient, SnsEventPublisher snsEventPublisher) {
         this.mascotasClient = mascotasClient;
-        this.rabbitTemplate = rabbitTemplate;
+        this.snsEventPublisher = snsEventPublisher;
     }
 
     @Override
@@ -40,9 +41,10 @@ public class ContactoServiceImpl implements ContactoService {
                 dto.getNombreContacto(),
                 dto.getEmailContacto(),
                 dto.getTelefonoContacto(),
-                dto.getMensaje());
+                dto.getMensaje(),
+                destino.getTokenReunificacion());
 
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KEY_CONTACTO, mensaje);
+        snsEventPublisher.publicar(TIPO_EVENTO_CONTACTO, mensaje);
 
         // No se registra el correo ni el contenido del mensaje en el log.
         log.info("Mensaje de contacto encolado para mascotaId={}", dto.getMascotaId());

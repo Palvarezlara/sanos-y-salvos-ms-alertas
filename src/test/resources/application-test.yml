@@ -31,10 +31,6 @@ spring:
     port: 587
     username: test@example.com
     password: test-password
-  rabbitmq:
-    listener:
-      simple:
-        auto-startup: false # el @RabbitListener no debe intentar conectarse a un broker real en los tests
   # Antes se armaban a partir de cognito.region/user-pool-id en el
   # application.yml base (ya movido a sanos-y-salvos-config_server) — hay
   # que declararlos directos acá porque el import al config-server está
@@ -55,3 +51,18 @@ contacto:
 
 ms-mascotas:
   base-url: http://localhost:8082
+
+frontend:
+  url: http://localhost:5173
+
+aws:
+  region: us-east-1
+  sns:
+    topic-arn: arn:aws:sns:us-east-1:000000000000:test-topic
+
+sqs:
+  cola-contacto-url: http://localhost:4566/000000000000/test-cola-contacto
+  cola-mascota-reportada-url: http://localhost:4566/000000000000/test-cola-mascota-reportada
+  cola-mascota-reunificada-url: http://localhost:4566/000000000000/test-cola-mascota-reunificada
+  consumidor:
+    auto-arranque: false # los listeners no deben levantar un hilo real de polling en los tests

@@ -2,16 +2,19 @@ package com.sanosysalvos.ms_alertas.listener;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.sanosysalvos.ms_alertas.config.RabbitMQConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sanosysalvos.ms_alertas.dto.AlertaRequestDto;
 import com.sanosysalvos.ms_alertas.dto.MascotaReportadaEvento;
+import com.sanosysalvos.ms_alertas.messaging.SqsPollingConsumer;
 import com.sanosysalvos.ms_alertas.service.AlertaService;
 
+import software.amazon.awssdk.services.sqs.SqsClient;
+
 /**
- * Consume cola.mascota.reportada y crea la Alerta geográfica correspondiente
+ * Consume cola-mascota-reportada y crea la Alerta geográfica correspondiente
  * (reusa AlertaService.crearAlerta, la misma lógica que ya usa el endpoint
  * manual POST /alertas).
  *
@@ -19,7 +22,7 @@ import com.sanosysalvos.ms_alertas.service.AlertaService;
  * crearAlerta en el flujo real de la app.
  */
 @Component
-public class MascotaReportadaListener {
+public class MascotaReportadaListener extends SqsPollingConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(MascotaReportadaListener.class);
 
@@ -28,12 +31,25 @@ public class MascotaReportadaListener {
     private static final double RADIO_KM_DEFECTO = 3.0;
 
     private final AlertaService alertaService;
+    private final ObjectMapper objectMapper;
 
-    public MascotaReportadaListener(AlertaService alertaService) {
+    public MascotaReportadaListener(
+            SqsClient sqsClient,
+            @Value("${sqs.cola-mascota-reportada-url}") String queueUrl,
+            @Value("${sqs.consumidor.auto-arranque:true}") boolean autoArranque,
+            AlertaService alertaService,
+            ObjectMapper objectMapper) {
+        super(sqsClient, queueUrl, autoArranque);
         this.alertaService = alertaService;
+        this.objectMapper = objectMapper;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.COLA_MASCOTA_REPORTADA)
+    @Override
+    protected void procesar(String cuerpoMensaje) throws Exception {
+        MascotaReportadaEvento evento = objectMapper.readValue(cuerpoMensaje, MascotaReportadaEvento.class);
+        crearAlerta(evento);
+    }
+
     public void crearAlerta(MascotaReportadaEvento evento) {
         AlertaRequestDto dto = new AlertaRequestDto();
         dto.setMascotaId(evento.getMascotaId());

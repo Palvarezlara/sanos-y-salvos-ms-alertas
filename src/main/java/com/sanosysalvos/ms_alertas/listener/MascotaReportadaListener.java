@@ -26,9 +26,10 @@ public class MascotaReportadaListener extends SqsPollingConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(MascotaReportadaListener.class);
 
-    // Recomendado por el diseño original del proyecto; no viaja en el evento
-    // porque ms-mascotas no tiene (ni debería tener) ningún concepto de radio.
-    private static final double RADIO_KM_DEFECTO = 3.0;
+    // Feedback del equipo (18-oct-2026): 3km traía resultados de ciudades
+    // vecinas, se achicó a 1.5km. No viaja en el evento porque ms-mascotas
+    // no tiene (ni debería tener) ningún concepto de radio.
+    private static final double RADIO_KM_DEFECTO = 1.5;
 
     private final AlertaService alertaService;
     private final ObjectMapper objectMapper;

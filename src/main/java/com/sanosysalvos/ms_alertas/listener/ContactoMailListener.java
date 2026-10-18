@@ -3,13 +3,16 @@ package com.sanosysalvos.ms_alertas.listener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.HtmlUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sanosysalvos.ms_alertas.dto.ContactoMensajeDto;
 import com.sanosysalvos.ms_alertas.messaging.SqsPollingConsumer;
+
+import jakarta.mail.internet.MimeMessage;
 
 import software.amazon.awssdk.services.sqs.SqsClient;
 
@@ -54,20 +57,33 @@ public class ContactoMailListener extends SqsPollingConsumer {
     }
 
     public void enviarCorreo(ContactoMensajeDto mensaje) {
-        SimpleMailMessage correo = new SimpleMailMessage();
-        correo.setFrom(remitente);
-        correo.setTo(mensaje.getEmailDestino());
-        correo.setReplyTo(mensaje.getEmailContacto());
-        correo.setSubject("Alguien tiene información sobre " + mensaje.getNombreMascota() + " — Sanos y Salvos");
-        correo.setText(construirCuerpo(mensaje));
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            // multipart=true: permite adjuntar la version HTML y la de texto
+            // plano juntas (alternative) — clientes que no rendericen HTML
+            // igual pueden leer el mensaje y el link de texto plano.
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom(remitente);
+            helper.setTo(mensaje.getEmailDestino());
+            helper.setReplyTo(mensaje.getEmailContacto());
+            helper.setSubject("Alguien tiene información sobre " + mensaje.getNombreMascota() + " — Sanos y Salvos");
+            helper.setText(construirCuerpoTexto(mensaje), construirCuerpoHtml(mensaje));
 
-        mailSender.send(correo);
+            mailSender.send(mimeMessage);
+        } catch (Exception e) {
+            // mailSender.send(MimeMessage) no declara checked exceptions en la
+            // firma de JavaMailSender, pero MimeMessageHelper sí las lanza al
+            // armar el mensaje (MessagingException) — se envuelve para que
+            // SqsPollingConsumer la trate igual que cualquier otro fallo de
+            // procesamiento (no borra el mensaje, reintenta).
+            throw new IllegalStateException("No se pudo armar o enviar el correo de contacto", e);
+        }
 
         // No se registra el correo ni el contenido del mensaje en el log.
         log.info("Correo de contacto enviado para mascotaId={}", mensaje.getMascotaId());
     }
 
-    private String construirCuerpo(ContactoMensajeDto mensaje) {
+    String construirCuerpoTexto(ContactoMensajeDto mensaje) {
         StringBuilder cuerpo = new StringBuilder();
         cuerpo.append("Hola,\n\n");
         cuerpo.append(mensaje.getNombreContacto())
@@ -80,17 +96,50 @@ public class ContactoMailListener extends SqsPollingConsumer {
             cuerpo.append("Teléfono: ").append(mensaje.getTelefonoContacto()).append('\n');
         }
         cuerpo.append("\nPuedes responder directamente a este correo para contactar a esta persona.\n\n");
-        if (mensaje.getTokenReunificacion() != null && !mensaje.getTokenReunificacion().isBlank()) {
+        if (tieneTokenReunificacion(mensaje)) {
             cuerpo.append("¿Esta persona te ayudó a recuperar a ").append(mensaje.getNombreMascota()).append("?\n");
-            cuerpo.append("Confirma la reunificación acá: ")
-                    .append(frontendUrl)
-                    .append("/confirmar-reunificacion/")
-                    .append(mensaje.getMascotaId())
-                    .append("?token=")
-                    .append(mensaje.getTokenReunificacion())
-                    .append("\n\n");
+            cuerpo.append("Confirma la reunificación acá: ").append(linkConfirmacion(mensaje)).append("\n\n");
         }
         cuerpo.append("— Sanos y Salvos");
         return cuerpo.toString();
+    }
+
+    String construirCuerpoHtml(ContactoMensajeDto mensaje) {
+        String nombreMascota = HtmlUtils.htmlEscape(mensaje.getNombreMascota());
+        StringBuilder html = new StringBuilder();
+        html.append("<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#2B2B2B;line-height:1.5;\">");
+        html.append("<p>Hola,</p>");
+        html.append("<p><strong>").append(HtmlUtils.htmlEscape(mensaje.getNombreContacto()))
+                .append("</strong> dejó este mensaje sobre <strong>").append(nombreMascota)
+                .append("</strong> en Sanos y Salvos:</p>");
+        html.append("<blockquote style=\"margin:0 0 16px;padding:12px 16px;background:#FFECF2;border-left:4px solid #C46081;border-radius:8px;\">")
+                .append(HtmlUtils.htmlEscape(mensaje.getMensaje()))
+                .append("</blockquote>");
+        html.append("<p>Correo de contacto: ").append(HtmlUtils.htmlEscape(mensaje.getEmailContacto())).append("<br/>");
+        if (mensaje.getTelefonoContacto() != null && !mensaje.getTelefonoContacto().isBlank()) {
+            html.append("Teléfono: ").append(HtmlUtils.htmlEscape(mensaje.getTelefonoContacto())).append("<br/>");
+        }
+        html.append("</p>");
+        html.append("<p>Puedes responder directamente a este correo para contactar a esta persona.</p>");
+        if (tieneTokenReunificacion(mensaje)) {
+            html.append("<p>¿Esta persona te ayudó a recuperar a ").append(nombreMascota).append("?</p>");
+            html.append("<p style=\"text-align:center;margin:24px 0;\">")
+                    .append("<a href=\"").append(linkConfirmacion(mensaje)).append("\" ")
+                    .append("style=\"display:inline-block;padding:14px 28px;background:#99A966;color:#ffffff;")
+                    .append("font-weight:bold;text-decoration:none;border-radius:16px;font-size:15px;\">")
+                    .append("🎉 Confirmar reunificación</a></p>");
+        }
+        html.append("<p>— Sanos y Salvos</p>");
+        html.append("</div>");
+        return html.toString();
+    }
+
+    private boolean tieneTokenReunificacion(ContactoMensajeDto mensaje) {
+        return mensaje.getTokenReunificacion() != null && !mensaje.getTokenReunificacion().isBlank();
+    }
+
+    private String linkConfirmacion(ContactoMensajeDto mensaje) {
+        return frontendUrl + "/confirmar-reunificacion/" + mensaje.getMascotaId()
+                + "?token=" + mensaje.getTokenReunificacion();
     }
 }

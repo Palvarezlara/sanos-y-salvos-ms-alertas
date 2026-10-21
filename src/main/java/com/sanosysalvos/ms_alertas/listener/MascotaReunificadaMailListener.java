@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sanosysalvos.ms_alertas.dto.MascotaReunificadaEvento;
 import com.sanosysalvos.ms_alertas.messaging.SqsPollingConsumer;
+import com.sanosysalvos.ms_alertas.service.AlertaService;
 
 import software.amazon.awssdk.services.sqs.SqsClient;
 
@@ -17,7 +18,9 @@ import software.amazon.awssdk.services.sqs.SqsClient;
  * Consume cola-mascota-reunificada: avisa por correo a quien creó el
  * reporte que se cerró (dueño si era EXTRAVIADO, quien la encontró si era
  * ENCONTRADO) — cada reporte se notifica a sí mismo, nunca se cruza con un
- * segundo reporte de la misma mascota.
+ * segundo reporte de la misma mascota. También desactiva la alerta de zona
+ * de esa mascota: ya reunida, no debe seguir apareciendo en el mapa ni
+ * disparando avisos de proximidad.
  */
 @Component
 public class MascotaReunificadaMailListener extends SqsPollingConsumer {
@@ -27,6 +30,7 @@ public class MascotaReunificadaMailListener extends SqsPollingConsumer {
     private final JavaMailSender mailSender;
     private final String remitente;
     private final ObjectMapper objectMapper;
+    private final AlertaService alertaService;
 
     public MascotaReunificadaMailListener(
             SqsClient sqsClient,
@@ -34,16 +38,19 @@ public class MascotaReunificadaMailListener extends SqsPollingConsumer {
             @Value("${sqs.consumidor.auto-arranque:true}") boolean autoArranque,
             JavaMailSender mailSender,
             @Value("${contacto.remitente}") String remitente,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            AlertaService alertaService) {
         super(sqsClient, queueUrl, autoArranque);
         this.mailSender = mailSender;
         this.remitente = remitente;
         this.objectMapper = objectMapper;
+        this.alertaService = alertaService;
     }
 
     @Override
     protected void procesar(String cuerpoMensaje) throws Exception {
         MascotaReunificadaEvento evento = objectMapper.readValue(cuerpoMensaje, MascotaReunificadaEvento.class);
+        alertaService.desactivarPorMascota(evento.getMascotaId());
         enviarCorreo(evento);
     }
 

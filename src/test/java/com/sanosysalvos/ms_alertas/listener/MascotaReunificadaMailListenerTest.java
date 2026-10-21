@@ -14,6 +14,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sanosysalvos.ms_alertas.dto.MascotaReunificadaEvento;
+import com.sanosysalvos.ms_alertas.service.AlertaService;
 
 import software.amazon.awssdk.services.sqs.SqsClient;
 
@@ -28,12 +29,15 @@ class MascotaReunificadaMailListenerTest {
     @Mock
     private SqsClient sqsClient;
 
+    @Mock
+    private AlertaService alertaService;
+
     private MascotaReunificadaMailListener listener;
 
     @BeforeEach
     void setUp() {
         listener = new MascotaReunificadaMailListener(sqsClient, "http://dummy/cola-mascota-reunificada", false,
-                mailSender, REMITENTE, new ObjectMapper());
+                mailSender, REMITENTE, new ObjectMapper(), alertaService);
     }
 
     @Test
@@ -64,5 +68,6 @@ class MascotaReunificadaMailListenerTest {
         ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(mailSender).send(captor.capture());
         assertThat(captor.getValue().getTo()).containsExactly("otra@example.com");
+        verify(alertaService).desactivarPorMascota("mascota-2");
     }
 }

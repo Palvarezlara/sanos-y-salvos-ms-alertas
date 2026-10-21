@@ -74,6 +74,14 @@ public class AlertaServiceImpl implements AlertaService {
         log.info("Alerta eliminada: id={}", id);
     }
 
+    @Override
+    public void desactivarPorMascota(String mascotaId) {
+        List<Alerta> activas = alertaRepository.findByMascotaIdAndEstado(mascotaId, EstadoAlerta.ACTIVA);
+        activas.forEach(alerta -> alerta.setEstado(EstadoAlerta.INACTIVA));
+        alertaRepository.saveAll(activas);
+        log.info("Alertas desactivadas por reunificación: mascotaId={}, cantidad={}", mascotaId, activas.size());
+    }
+
     private AlertaResponseDto toResponseDto(Alerta alerta) {
         return AlertaResponseDto.builder()
                 .id(alerta.getId())

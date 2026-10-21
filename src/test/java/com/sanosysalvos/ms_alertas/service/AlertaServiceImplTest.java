@@ -106,4 +106,16 @@ class AlertaServiceImplTest {
 
         verify(alertaRepository, never()).deleteById(any());
     }
+
+    @Test
+    void desactivarPorMascota_pasa_a_inactiva_solo_las_alertas_activas_de_esa_mascota() {
+        Alerta activa = alertaGuardada();
+        when(alertaRepository.findByMascotaIdAndEstado("64f1a2b3c4d5e6f7a8b9c0d1", EstadoAlerta.ACTIVA))
+                .thenReturn(List.of(activa));
+
+        alertaService.desactivarPorMascota("64f1a2b3c4d5e6f7a8b9c0d1");
+
+        assertThat(activa.getEstado()).isEqualTo(EstadoAlerta.INACTIVA);
+        verify(alertaRepository).saveAll(List.of(activa));
+    }
 }

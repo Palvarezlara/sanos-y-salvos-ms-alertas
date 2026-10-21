@@ -17,4 +17,9 @@ public interface AlertaService {
     AlertaResponseDto actualizarEstado(Long id, ActualizarAlertaDto dto);
 
     void eliminarAlerta(Long id);
+
+    // Se llama al consumir mascota.reunificada: una mascota ya reunida no
+    // debe seguir generando avisos de zona (ni en el mapa ni en el aviso de
+    // proximidad del frontend).
+    void desactivarPorMascota(String mascotaId);
 }

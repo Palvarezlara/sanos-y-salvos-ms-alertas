@@ -13,6 +13,8 @@ public interface AlertaRepository extends JpaRepository<Alerta, Long> {
 
     List<Alerta> findByEstado(EstadoAlerta estado);
 
+    List<Alerta> findByMascotaIdAndEstado(String mascotaId, EstadoAlerta estado);
+
     // Fórmula de Haversine: distancia en km entre el centro de cada alerta y el
     // punto buscado. Se filtra en SQL (no en memoria) porque el volumen de
     // alertas activas puede crecer y no hay soporte geoespacial nativo en MySQL

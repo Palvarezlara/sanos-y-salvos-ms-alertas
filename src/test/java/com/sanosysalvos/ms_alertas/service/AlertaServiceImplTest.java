@@ -118,4 +118,27 @@ class AlertaServiceImplTest {
         assertThat(activa.getEstado()).isEqualTo(EstadoAlerta.INACTIVA);
         verify(alertaRepository).saveAll(List.of(activa));
     }
+
+    @Test
+    void buscarPorZona_devuelve_coordenadas_aproximadas_no_las_exactas() {
+        Alerta exacta = alertaGuardada();
+        exacta.setLatitudCentro(-33.456789);
+        exacta.setLongitudCentro(-70.663214);
+        when(alertaRepository.buscarPorZona(-33.45, -70.66, 2.0)).thenReturn(List.of(exacta));
+
+        AlertaResponseDto respuesta = alertaService.buscarPorZona(-33.45, -70.66, 2.0).get(0);
+
+        // ubicacion aproximada por privacidad (CLAUDE.md): 2 decimales, ~1,1 km
+        assertThat(respuesta.getLatitudCentro()).isEqualTo(-33.46);
+        assertThat(respuesta.getLongitudCentro()).isEqualTo(-70.66);
+    }
+
+    @Test
+    void existeActivaParaMascota_refleja_si_hay_alertas_activas() {
+        when(alertaRepository.findByMascotaIdAndEstado("m1", EstadoAlerta.ACTIVA)).thenReturn(List.of(alertaGuardada()));
+        when(alertaRepository.findByMascotaIdAndEstado("m2", EstadoAlerta.ACTIVA)).thenReturn(List.of());
+
+        assertThat(alertaService.existeActivaParaMascota("m1")).isTrue();
+        assertThat(alertaService.existeActivaParaMascota("m2")).isFalse();
+    }
 }

@@ -62,4 +62,27 @@ class AlertaRepositoryTest {
 
         assertThat(resultado).extracting(Alerta::getMascotaId).containsExactly(cercanaActiva.getMascotaId());
     }
+
+    @Test
+    void buscarPorZona_encuentra_la_alerta_ubicada_exactamente_en_el_punto_buscado() {
+        // Por redondeo, cos/sin pueden sumar 1.0000000000000002 y acos() devolvia NULL (MySQL)
+        // o error (H2): la alerta puesta justo en el punto desaparecia del resultado.
+        double[][] puntos = { { -46.158, -75.9152 }, { -28.5431, -70.9113 }, { -19.9224, -71.4223 }, { -51.8318, -70.8564 } }; // cos/sin suman 1.0000000000000002
+        for (double[] punto : puntos) {
+            alertaRepository.save(Alerta.builder()
+                    .mascotaId("exacta-" + punto[0])
+                    .latitudCentro(punto[0])
+                    .longitudCentro(punto[1])
+                    .radioKm(1.5)
+                    .estado(EstadoAlerta.ACTIVA)
+                    .creadaEn(java.time.LocalDateTime.now())
+                    .build());
+        }
+
+        for (double[] punto : puntos) {
+            assertThat(alertaRepository.buscarPorZona(punto[0], punto[1], 0.1))
+                    .extracting(Alerta::getMascotaId)
+                    .contains("exacta-" + punto[0]);
+        }
+    }
 }

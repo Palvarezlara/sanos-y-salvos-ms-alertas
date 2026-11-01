@@ -1,5 +1,13 @@
 package com.sanosysalvos.ms_alertas.config;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,14 +52,36 @@ public class SecurityConfig {
                 // igual que Home/Listado en ms-mascotas (ver CLAUDE.md). Crear,
                 // actualizar o eliminar sigue requiriendo un access_token válido.
                 .requestMatchers(HttpMethod.GET, "/alertas", "/alertas/zona").permitAll()
+                // Las alertas las crea y desactiva el flujo de mensajería (listeners SQS), no
+                // los usuarios: escribir a mano queda solo para administradores (grupo
+                // "Administradores" de Cognito), no para cualquier usuario con sesión.
+                .requestMatchers(HttpMethod.POST, "/alertas").hasRole("ADMINISTRADOR")
+                .requestMatchers(HttpMethod.PATCH, "/alertas/**").hasRole("ADMINISTRADOR")
+                .requestMatchers(HttpMethod.DELETE, "/alertas/**").hasRole("ADMINISTRADOR")
                 // cualquiera que encuentre una mascota puede contactar, sin cuenta
                 .requestMatchers(HttpMethod.POST, "/contactos").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.decoder(jwtDecoder()))
+                .jwt(jwt -> jwt.decoder(jwtDecoder()).jwtAuthenticationConverter(jwtAuthenticationConverter()))
             );
         return http.build();
+    }
+
+    // Mismo criterio que ms-mascotas: el grupo "Administradores" de Cognito viaja en el
+    // claim cognito:groups del access token y se traduce al rol ADMINISTRADOR.
+    JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter scopes = new JwtGrantedAuthoritiesConverter();
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            Collection<GrantedAuthority> authorities = new ArrayList<>(scopes.convert(jwt));
+            List<String> grupos = jwt.getClaimAsStringList("cognito:groups");
+            if (grupos != null && grupos.contains("Administradores")) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMINISTRADOR"));
+            }
+            return authorities;
+        });
+        return converter;
     }
 
     private NimbusJwtDecoder jwtDecoder() {

@@ -75,6 +75,11 @@ public class AlertaServiceImpl implements AlertaService {
     }
 
     @Override
+    public boolean existeActivaParaMascota(String mascotaId) {
+        return !alertaRepository.findByMascotaIdAndEstado(mascotaId, EstadoAlerta.ACTIVA).isEmpty();
+    }
+
+    @Override
     public void desactivarPorMascota(String mascotaId) {
         List<Alerta> activas = alertaRepository.findByMascotaIdAndEstado(mascotaId, EstadoAlerta.ACTIVA);
         activas.forEach(alerta -> alerta.setEstado(EstadoAlerta.INACTIVA));
@@ -86,11 +91,18 @@ public class AlertaServiceImpl implements AlertaService {
         return AlertaResponseDto.builder()
                 .id(alerta.getId())
                 .mascotaId(alerta.getMascotaId())
-                .latitudCentro(alerta.getLatitudCentro())
-                .longitudCentro(alerta.getLongitudCentro())
+                .latitudCentro(aproximar(alerta.getLatitudCentro()))
+                .longitudCentro(aproximar(alerta.getLongitudCentro()))
                 .radioKm(alerta.getRadioKm())
                 .estado(alerta.getEstado())
                 .creadaEn(alerta.getCreadaEn())
                 .build();
+    }
+
+    // Los endpoints de lectura son publicos: la coordenada exacta (que llega en el evento de
+    // ms-mascotas) solo se usa internamente para calcular distancias. Hacia afuera se redondea
+    // a 2 decimales (~1,1 km), igual que hace ms-mascotas ("ubicacion aproximada", CLAUDE.md).
+    private static Double aproximar(Double coordenada) {
+        return coordenada == null ? null : Math.round(coordenada * 100.0) / 100.0;
     }
 }

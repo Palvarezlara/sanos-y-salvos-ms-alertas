@@ -24,6 +24,8 @@ public abstract class SqsPollingConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(SqsPollingConsumer.class);
 
+    private static final int VISIBILIDAD_SEGUNDOS = 120;
+
     private final SqsClient sqsClient;
     private final String queueUrl;
     private final boolean autoArranque;
@@ -65,6 +67,10 @@ public abstract class SqsPollingConsumer {
                         .queueUrl(queueUrl)
                         .maxNumberOfMessages(5)
                         .waitTimeSeconds(10)
+                        // el lote se procesa en serie: si el SMTP es lento, los ultimos mensajes
+                        // reaparecerian en la cola (y el dueño recibiria el correo dos veces)
+                        // antes de que les toque el turno
+                        .visibilityTimeout(VISIBILIDAD_SEGUNDOS)
                         .build());
 
                 for (Message mensaje : respuesta.messages()) {

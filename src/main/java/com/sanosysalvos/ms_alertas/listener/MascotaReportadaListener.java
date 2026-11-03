@@ -52,6 +52,11 @@ public class MascotaReportadaListener extends SqsPollingConsumer {
     }
 
     public void crearAlerta(MascotaReportadaEvento evento) {
+        // SQS entrega "al menos una vez": un reintento no debe crear una alerta duplicada
+        if (alertaService.existeActivaParaMascota(evento.getMascotaId())) {
+            log.info("Alerta ya existente para mascotaId={}, se ignora el mensaje repetido", evento.getMascotaId());
+            return;
+        }
         AlertaRequestDto dto = new AlertaRequestDto();
         dto.setMascotaId(evento.getMascotaId());
         dto.setLatitudCentro(evento.getLatitud());

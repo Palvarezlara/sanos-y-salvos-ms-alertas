@@ -64,4 +64,15 @@ class MascotaReportadaListenerTest {
         verify(alertaService).crearAlerta(captor.capture());
         assertThat(captor.getValue().getMascotaId()).isEqualTo("mascota-2");
     }
+
+    @Test
+    void crearAlerta_ignora_un_mensaje_repetido_si_ya_hay_una_alerta_activa() {
+        // SQS entrega "al menos una vez": un reintento no debe duplicar la alerta
+        org.mockito.Mockito.when(alertaService.existeActivaParaMascota("mascota-1")).thenReturn(true);
+
+        listener.crearAlerta(new MascotaReportadaEvento("mascota-1", -33.45, -70.98));
+
+        org.mockito.Mockito.verify(alertaService, org.mockito.Mockito.never())
+                .crearAlerta(org.mockito.ArgumentMatchers.any());
+    }
 }

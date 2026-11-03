@@ -22,4 +22,6 @@ public interface AlertaService {
     // debe seguir generando avisos de zona (ni en el mapa ni en el aviso de
     // proximidad del frontend).
     void desactivarPorMascota(String mascotaId);
+
+    boolean existeActivaParaMascota(String mascotaId);
 }

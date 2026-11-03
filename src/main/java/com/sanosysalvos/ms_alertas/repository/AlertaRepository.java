@@ -15,6 +15,9 @@ public interface AlertaRepository extends JpaRepository<Alerta, Long> {
 
     List<Alerta> findByMascotaIdAndEstado(String mascotaId, EstadoAlerta estado);
 
+    // El argumento de acos() se acota a [-1, 1]: por redondeo de punto flotante puede dar
+    // 1.0000000000000002 y MySQL devuelve NULL, con lo que una alerta ubicada exactamente
+    // en el punto buscado desaparecia del resultado.
     // Fórmula de Haversine: distancia en km entre el centro de cada alerta y el
     // punto buscado. Se filtra en SQL (no en memoria) porque el volumen de
     // alertas activas puede crecer y no hay soporte geoespacial nativo en MySQL
@@ -22,11 +25,11 @@ public interface AlertaRepository extends JpaRepository<Alerta, Long> {
     @Query(value = """
             SELECT * FROM alertas a
             WHERE a.estado = 'ACTIVA'
-            AND (6371 * acos(
+            AND (6371 * acos(LEAST(1, GREATEST(-1,
                     cos(radians(:lat)) * cos(radians(a.latitud_centro))
                     * cos(radians(a.longitud_centro) - radians(:lng))
                     + sin(radians(:lat)) * sin(radians(a.latitud_centro))
-                )) <= :radioKm
+                )))) <= :radioKm
             """, nativeQuery = true)
     List<Alerta> buscarPorZona(@Param("lat") Double lat, @Param("lng") Double lng, @Param("radioKm") Double radioKm);
 }

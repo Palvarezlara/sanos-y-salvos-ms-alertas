@@ -77,6 +77,8 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
       MS_MASCOTAS_BASE_URL: http://ms-mascotas:8082
+      # secreto de servicio para llamar a /internal/** de ms-mascotas (el mismo que tiene ms-mascotas)
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
       # Para armar el link de confirmación de reunificación en el correo de
       # contacto. En AWS esto apunta al dominio real del frontend (Vercel).
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}

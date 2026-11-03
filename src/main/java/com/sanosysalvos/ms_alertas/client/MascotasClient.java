@@ -15,18 +15,26 @@ import com.sanosysalvos.ms_alertas.exception.ServicioNoDisponibleException;
 /**
  * Cliente hacia el endpoint interno de ms-mascotas que resuelve el destinatario
  * de un correo de contacto, sin que ms-alertas acceda directo a su base de datos.
+ *
+ * ms-mascotas exige el secreto de servicio en X-Internal-Token (INTERNAL_API_TOKEN) y ahora atiende el
+ * contacto por POST: puede emitir un token de reunificación, así que ya no es una simple lectura.
  */
 @Component
 public class MascotasClient {
 
     private final RestClient restClient;
 
-    public MascotasClient(@Value("${ms-mascotas.base-url}") String baseUrl) {
+    public MascotasClient(@Value("${ms-mascotas.base-url}") String baseUrl,
+            @Value("${internal.api-token:}") String tokenInterno) {
         // Sin timeouts, un ms-mascotas colgado dejaria bloqueados los hilos de /contactos
         SimpleClientHttpRequestFactory fabrica = new SimpleClientHttpRequestFactory();
         fabrica.setConnectTimeout(Duration.ofSeconds(3));
         fabrica.setReadTimeout(Duration.ofSeconds(5));
-        this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(fabrica).build();
+        RestClient.Builder builder = RestClient.builder().baseUrl(baseUrl).requestFactory(fabrica);
+        if (tokenInterno != null && !tokenInterno.isBlank()) {
+            builder.defaultHeader("X-Internal-Token", tokenInterno);
+        }
+        this.restClient = builder.build();
     }
 
     /** null si la mascota no existe o su reporte no esta aprobado (404 de ms-mascotas). */
@@ -34,7 +42,7 @@ public class MascotasClient {
         try {
             /* ms-mascotas sirve todo bajo /api/v1 (SPRING_MVC_SERVLET_PATH); sin el
              * prefijo la peticion no matcheaba el permitAll de /internal/** y caia en 401 */
-            return restClient.get()
+            return restClient.post()
                     .uri("/api/v1/internal/mascotas/{id}/contacto", mascotaId)
                     .retrieve()
                     .body(MascotaContactoDto.class);

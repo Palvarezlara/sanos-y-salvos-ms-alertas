@@ -64,5 +64,6 @@ sqs:
   cola-contacto-url: http://localhost:4566/000000000000/test-cola-contacto
   cola-mascota-reportada-url: http://localhost:4566/000000000000/test-cola-mascota-reportada
   cola-mascota-reunificada-url: http://localhost:4566/000000000000/test-cola-mascota-reunificada
+  cola-chat-aviso-url: http://localhost:4566/000000000000/test-cola-chat-aviso
   consumidor:
     auto-arranque: false # los listeners no deben levantar un hilo real de polling en los tests

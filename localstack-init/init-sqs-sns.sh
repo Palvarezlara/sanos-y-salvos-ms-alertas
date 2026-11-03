@@ -37,5 +37,7 @@ EOF
 crear_cola "cola-contacto" "contacto.solicitado"
 crear_cola "cola-mascota-reportada" "mascota.reportada"
 crear_cola "cola-mascota-reunificada" "mascota.reunificada"
+# aviso por correo de mensajes nuevos del chat (lo publica ms-chat, lo envia ms-alertas)
+crear_cola "cola-chat-aviso" "chat.mensaje.nuevo"
 
 echo "LocalStack listo."

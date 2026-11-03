@@ -91,6 +91,7 @@ services:
       SQS_COLA_CONTACTO_URL: http://localstack:4566/000000000000/cola-contacto
       SQS_COLA_MASCOTA_REPORTADA_URL: http://localstack:4566/000000000000/cola-mascota-reportada
       SQS_COLA_MASCOTA_REUNIFICADA_URL: http://localstack:4566/000000000000/cola-mascota-reunificada
+      SQS_COLA_CHAT_AVISO_URL: http://localstack:4566/000000000000/cola-chat-aviso
 
 volumes:
   ms-alertas-mysql-data:

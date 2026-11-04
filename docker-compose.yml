@@ -78,7 +78,8 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
       MS_MASCOTAS_BASE_URL: http://ms-mascotas:8082
       # secreto de servicio para llamar a /internal/** de ms-mascotas (el mismo que tiene ms-mascotas)
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Define INTERNAL_API_TOKEN en .env (minimo 32 caracteres)}
+      SWAGGER_ENABLED: "true"   # solo en local
       # Para armar el link de confirmación de reunificación en el correo de
       # contacto. En AWS esto apunta al dominio real del frontend (Vercel).
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
@@ -94,6 +95,7 @@ services:
       SQS_COLA_MASCOTA_REPORTADA_URL: http://localstack:4566/000000000000/cola-mascota-reportada
       SQS_COLA_MASCOTA_REUNIFICADA_URL: http://localstack:4566/000000000000/cola-mascota-reunificada
       SQS_COLA_CHAT_AVISO_URL: http://localstack:4566/000000000000/cola-chat-aviso
+      SQS_COLA_MASCOTA_ELIMINADA_URL: http://localstack:4566/000000000000/cola-mascota-eliminada
 
 volumes:
   ms-alertas-mysql-data:

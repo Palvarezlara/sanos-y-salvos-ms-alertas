@@ -11,7 +11,9 @@ import com.sanosysalvos.ms_alertas.dto.AlertaResponseDto;
 import com.sanosysalvos.ms_alertas.exception.ResourceNotFoundException;
 import com.sanosysalvos.ms_alertas.model.Alerta;
 import com.sanosysalvos.ms_alertas.model.EstadoAlerta;
+import com.sanosysalvos.ms_alertas.model.MascotaCerrada;
 import com.sanosysalvos.ms_alertas.repository.AlertaRepository;
+import com.sanosysalvos.ms_alertas.repository.MascotaCerradaRepository;
 import com.sanosysalvos.ms_alertas.service.AlertaService;
 
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AlertaServiceImpl implements AlertaService {
 
     private final AlertaRepository alertaRepository;
+    private final MascotaCerradaRepository mascotaCerradaRepository;
 
     @Override
     public AlertaResponseDto crearAlerta(AlertaRequestDto dto) {
@@ -80,11 +83,19 @@ public class AlertaServiceImpl implements AlertaService {
     }
 
     @Override
-    public void desactivarPorMascota(String mascotaId) {
+    public void desactivarPorMascota(String mascotaId, String motivo) {
         List<Alerta> activas = alertaRepository.findByMascotaIdAndEstado(mascotaId, EstadoAlerta.ACTIVA);
         activas.forEach(alerta -> alerta.setEstado(EstadoAlerta.INACTIVA));
         alertaRepository.saveAll(activas);
-        log.info("Alertas desactivadas por reunificación: mascotaId={}, cantidad={}", mascotaId, activas.size());
+        if (!mascotaCerradaRepository.existsById(mascotaId)) {
+            mascotaCerradaRepository.save(new MascotaCerrada(mascotaId, motivo, LocalDateTime.now()));
+        }
+        log.info("Alertas desactivadas: mascotaId={}, motivo={}, cantidad={}", mascotaId, motivo, activas.size());
+    }
+
+    @Override
+    public boolean mascotaCerrada(String mascotaId) {
+        return mascotaCerradaRepository.existsById(mascotaId);
     }
 
     private AlertaResponseDto toResponseDto(Alerta alerta) {

@@ -68,6 +68,29 @@ class MascotaReunificadaMailListenerTest {
         ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(mailSender).send(captor.capture());
         assertThat(captor.getValue().getTo()).containsExactly("otra@example.com");
-        verify(alertaService).desactivarPorMascota("mascota-2");
+        verify(alertaService).desactivarPorMascota("mascota-2", "REUNIFICADA");
+    }
+
+    @Test
+    void el_asunto_no_admite_saltos_de_linea_del_nombre_de_la_mascota() {
+        // el nombre lo escribe el dueño: "Bcc:" en una segunda linea inyectaria un encabezado
+        MascotaReunificadaEvento evento = new MascotaReunificadaEvento(
+                "mascota-3", "Firu\r\nBcc: victima@example.com", "duena@example.com");
+
+        listener.enviarCorreo(evento);
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+        assertThat(captor.getValue().getSubject()).doesNotContain("\r", "\n");
+        assertThat(captor.getValue().getSubject()).contains("Firu");
+    }
+
+    @Test
+    void sin_nombre_usa_un_texto_de_respaldo() {
+        listener.enviarCorreo(new MascotaReunificadaEvento("mascota-4", "  ", "duena@example.com"));
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+        assertThat(captor.getValue().getSubject()).contains("tu mascota");
     }
 }

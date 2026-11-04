@@ -49,6 +49,10 @@ spring:
 contacto:
   remitente: test@example.com
 
+# secreto de servicio para /internal/** de ms-mascotas (el cliente exige minimo 32 caracteres)
+internal:
+  api-token: secreto-de-servicio-de-prueba-de-al-menos-32-caracteres
+
 ms-mascotas:
   base-url: http://localhost:8082
 

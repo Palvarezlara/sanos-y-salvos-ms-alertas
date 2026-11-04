@@ -3,6 +3,7 @@ package com.sanosysalvos.ms_alertas.listener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -57,13 +58,24 @@ public class MascotaReportadaListener extends SqsPollingConsumer {
             log.info("Alerta ya existente para mascotaId={}, se ignora el mensaje repetido", evento.getMascotaId());
             return;
         }
+        // Las colas son independientes: si el reporte ya se reunificó o se eliminó, el evento llegó tarde
+        if (alertaService.mascotaCerrada(evento.getMascotaId())) {
+            log.info("Reporte ya cerrado, no se crea la alerta: mascotaId={}", evento.getMascotaId());
+            return;
+        }
         AlertaRequestDto dto = new AlertaRequestDto();
         dto.setMascotaId(evento.getMascotaId());
         dto.setLatitudCentro(evento.getLatitud());
         dto.setLongitudCentro(evento.getLongitud());
         dto.setRadioKm(RADIO_KM_DEFECTO);
 
-        alertaService.crearAlerta(dto);
-        log.info("Alerta creada automaticamente a partir de mascota.reportada, mascotaId={}", evento.getMascotaId());
+        try {
+            alertaService.crearAlerta(dto);
+            log.info("Alerta creada automaticamente a partir de mascota.reportada, mascotaId={}", evento.getMascotaId());
+        } catch (DataIntegrityViolationException e) {
+            // otra instancia (o una reentrega) la creó entre la comprobación y el guardado: la restricción
+            // única de la tabla evita el duplicado, y no es un error que haya que reintentar
+            log.info("Alerta creada en paralelo para mascotaId={}, se ignora el duplicado", evento.getMascotaId());
+        }
     }
 }

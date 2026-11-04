@@ -66,7 +66,9 @@ public class ContactoMailListener extends SqsPollingConsumer {
             helper.setFrom(remitente);
             helper.setTo(mensaje.getEmailDestino());
             helper.setReplyTo(mensaje.getEmailContacto());
-            helper.setSubject("Alguien tiene información sobre " + mensaje.getNombreMascota() + " — Sanos y Salvos");
+            /* el nombre lo escribe el dueño: sin saltos de línea en el asunto (inyección de encabezados) */
+            helper.setSubject("Alguien tiene información sobre "
+                    + TextoSeguro.nombre(mensaje.getNombreMascota(), "tu reporte") + " — Sanos y Salvos");
             helper.setText(construirCuerpoTexto(mensaje), construirCuerpoHtml(mensaje));
 
             mailSender.send(mimeMessage);

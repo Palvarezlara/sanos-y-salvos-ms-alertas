@@ -98,12 +98,23 @@ class MascotasClientTest {
     }
 
     @Test
-    void sinSecretoConfiguradoNoEnviaElHeader() {
-        estado = 200;
-        cuerpo = "{\"mascotaId\":\"m1\"}";
+    void sinSecretoElServicioNoArranca() {
+        /* sin el secreto ms-mascotas respondia 401 y parecia una caida: mejor fallar al arrancar y decir por que */
+        for (String malo : new String[] { "", "   ", "corto" }) {
+            assertThatThrownBy(() -> new MascotasClient("http://127.0.0.1:1", malo))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("INTERNAL_API_TOKEN");
+        }
+        assertThatThrownBy(() -> new MascotasClient("http://127.0.0.1:1", null)).isInstanceOf(IllegalStateException.class);
+    }
 
-        new MascotasClient("http://127.0.0.1:" + servidor.getAddress().getPort(), "").obtenerContacto("m1");
+    @Test
+    void unaCredencialRechazadaSeTraduceAServicioNoDisponible() {
+        estado = 401;
+        cuerpo = "";
 
-        assertThat(tokenRecibido).isNull();
+        assertThatThrownBy(() -> cliente().obtenerContacto("m1"))
+                .isInstanceOf(ServicioNoDisponibleException.class)
+                .hasMessageContaining("credencial");
     }
 }

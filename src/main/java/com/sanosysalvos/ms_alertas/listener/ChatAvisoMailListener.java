@@ -25,7 +25,6 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 public class ChatAvisoMailListener extends SqsPollingConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(ChatAvisoMailListener.class);
-    private static final int LARGO_MAXIMO_NOMBRE = 60;
     /* sin espacios ni saltos de línea: evita inyectar encabezados de correo (Bcc:, etc.) */
     private static final String PATRON_CORREO = "[^\\s@\\r\\n]+@[^\\s@\\r\\n]+\\.[^\\s@\\r\\n]+";
 
@@ -36,7 +35,7 @@ public class ChatAvisoMailListener extends SqsPollingConsumer {
 
     public ChatAvisoMailListener(
             SqsClient sqsClient,
-            @Value("${sqs.cola-chat-aviso-url}") String queueUrl,
+            @Value("${sqs.cola-chat-aviso-url:}") String queueUrl,
             @Value("${sqs.consumidor.auto-arranque:true}") boolean autoArranque,
             JavaMailSender mailSender,
             @Value("${contacto.remitente}") String remitente,
@@ -76,11 +75,7 @@ public class ChatAvisoMailListener extends SqsPollingConsumer {
 
     /* el nombre lo escribe un usuario y va en el asunto: se quitan saltos de línea y se acorta */
     static String nombreSeguro(String nombre) {
-        String limpio = nombre == null ? "" : nombre.replaceAll("[\\p{Cntrl}]", " ").strip();
-        if (limpio.isEmpty()) {
-            return "tu reporte";
-        }
-        return limpio.length() > LARGO_MAXIMO_NOMBRE ? limpio.substring(0, LARGO_MAXIMO_NOMBRE) + "…" : limpio;
+        return TextoSeguro.nombre(nombre, "tu reporte");
     }
 
     String construirCuerpo(String mascota, String conversacionId) {

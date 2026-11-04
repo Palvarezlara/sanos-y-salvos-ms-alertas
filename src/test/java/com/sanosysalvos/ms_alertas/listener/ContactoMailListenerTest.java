@@ -104,4 +104,19 @@ class ContactoMailListenerTest {
                 .contains("Luna", mensajeConToken().getMensaje(), mensajeConToken().getNombreContacto())
                 .contains(FRONTEND_URL + "/confirmar-reunificacion/64f1a2b3c4d5e6f7a8b9c0d1?token=token-abc");
     }
+
+    @Test
+    void el_asunto_no_admite_saltos_de_linea_del_nombre_de_la_mascota() throws Exception {
+        when(mailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
+        ContactoMensajeDto malicioso = new ContactoMensajeDto(
+                "64f1a2b3c4d5e6f7a8b9c0d1", "duena@example.com", "Luna\r\nBcc: victima@example.com",
+                "María", "maria@ejemplo.cl", null, "Hola", "token-abc");
+
+        listener.enviarCorreo(malicioso);
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        assertThat(captor.getValue().getSubject()).doesNotContain("\r", "\n");
+        assertThat(captor.getValue().getHeader("Bcc")).isNull();
+    }
 }

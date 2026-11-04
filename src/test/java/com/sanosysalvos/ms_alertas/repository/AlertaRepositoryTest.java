@@ -85,4 +85,46 @@ class AlertaRepositoryTest {
                     .contains("exacta-" + punto[0]);
         }
     }
+
+    private Alerta alerta(String mascotaId, double lat, double lng, EstadoAlerta estado) {
+        return Alerta.builder().mascotaId(mascotaId).latitudCentro(lat).longitudCentro(lng).radioKm(1.5)
+                .estado(estado).creadaEn(java.time.LocalDateTime.now()).build();
+    }
+
+    @Test
+    void la_caja_de_busqueda_no_deja_fuera_puntos_dentro_del_radio_hacia_el_este_ni_hacia_el_oeste() {
+        // a latitud -33.44 un grado de longitud mide ~92,9 km: 0,0205 grados son ~1,9 km
+        double lat = -33.44;
+        alertaRepository.save(alerta("este-dentro", lat, -70.60 + 0.0205, EstadoAlerta.ACTIVA));
+        alertaRepository.save(alerta("oeste-dentro", lat, -70.60 - 0.0205, EstadoAlerta.ACTIVA));
+        alertaRepository.save(alerta("este-fuera", lat, -70.60 + 0.0235, EstadoAlerta.ACTIVA));   // ~2,2 km
+        alertaRepository.save(alerta("norte-dentro", lat + 0.0170, -70.60, EstadoAlerta.ACTIVA));  // ~1,9 km
+        alertaRepository.save(alerta("norte-fuera", lat + 0.0200, -70.60, EstadoAlerta.ACTIVA));   // ~2,2 km
+
+        List<String> ids = alertaRepository.buscarPorZona(lat, -70.60, 2.0).stream().map(Alerta::getMascotaId).toList();
+
+        assertThat(ids).containsExactlyInAnyOrder("este-dentro", "oeste-dentro", "norte-dentro");
+    }
+
+    @Test
+    void no_puede_haber_dos_alertas_activas_del_mismo_reporte() {
+        alertaRepository.saveAndFlush(alerta("m-dup", -33.44, -70.65, EstadoAlerta.ACTIVA));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> alertaRepository.saveAndFlush(alerta("m-dup", -33.44, -70.65, EstadoAlerta.ACTIVA)))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void se_permiten_varias_alertas_inactivas_y_una_nueva_activa_despues_de_desactivar() {
+        Alerta primera = alertaRepository.saveAndFlush(alerta("m-ciclo", -33.44, -70.65, EstadoAlerta.ACTIVA));
+        primera.setEstado(EstadoAlerta.INACTIVA);
+        alertaRepository.saveAndFlush(primera);
+        alertaRepository.saveAndFlush(alerta("m-ciclo", -33.44, -70.65, EstadoAlerta.INACTIVA));
+
+        alertaRepository.saveAndFlush(alerta("m-ciclo", -33.44, -70.65, EstadoAlerta.ACTIVA));
+
+        assertThat(alertaRepository.findByMascotaIdAndEstado("m-ciclo", EstadoAlerta.ACTIVA)).hasSize(1);
+        assertThat(alertaRepository.findByMascotaIdAndEstado("m-ciclo", EstadoAlerta.INACTIVA)).hasSize(2);
+    }
 }

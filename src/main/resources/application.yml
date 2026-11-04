@@ -13,3 +13,10 @@ spring:
     import: "optional:file:.env[.properties],optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
   application:
     name: ms-alertas
+
+# Swagger/OpenAPI apagado por defecto (expone todo el contrato de la API); el docker-compose local lo enciende
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}

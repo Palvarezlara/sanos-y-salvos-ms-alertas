@@ -209,4 +209,17 @@ class AlertaControllerSeguridadTest {
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(contactoService);
     }
+
+    @Test
+    void el_listado_completo_de_alertas_ya_no_es_publico() throws Exception {
+        mockMvc.perform(get("/alertas")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/alertas").with(usuarioComun())).andExpect(status().isForbidden());
+        mockMvc.perform(get("/alertas").with(administrador())).andExpect(status().isOk());
+    }
+
+    @Test
+    void swagger_esta_apagado_por_defecto() throws Exception {
+        mockMvc.perform(get("/v3/api-docs")).andExpect(status().is4xxClientError());
+        mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().is4xxClientError());
+    }
 }

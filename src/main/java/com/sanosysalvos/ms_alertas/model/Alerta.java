@@ -9,14 +9,27 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "alertas")
+// Los indices cubren findByMascotaIdAndEstado (en cada evento) y el prefiltro de buscarPorZona (publico).
+// uk_alertas_activa_por_mascota impide dos alertas ACTIVAS del mismo reporte aunque dos instancias (o una
+// reentrega de SQS) intenten crearla a la vez: clave_activa vale el mascotaId solo si esta ACTIVA, y
+// MySQL permite varios NULL en un indice unico.
+@Table(name = "alertas",
+        indexes = {
+                @Index(name = "idx_alertas_mascota_estado", columnList = "mascota_id,estado"),
+                @Index(name = "idx_alertas_estado_zona", columnList = "estado,latitud_centro,longitud_centro")
+        },
+        uniqueConstraints = @UniqueConstraint(name = "uk_alertas_activa_por_mascota", columnNames = "clave_activa"))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -46,4 +59,13 @@ public class Alerta {
 
     @Column(nullable = false)
     private LocalDateTime creadaEn;
+
+    @Column(name = "clave_activa")
+    private String claveActiva;
+
+    @PrePersist
+    @PreUpdate
+    void calcularClaveActiva() {
+        this.claveActiva = estado == EstadoAlerta.ACTIVA ? mascotaId : null;
+    }
 }

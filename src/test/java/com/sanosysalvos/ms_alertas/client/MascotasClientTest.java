@@ -18,7 +18,11 @@ import com.sun.net.httpserver.HttpServer;
 /* Servidor HTTP real y local: no hace falta ms-mascotas para probar como se traducen sus respuestas */
 class MascotasClientTest {
 
+    private static final String TOKEN = "secreto-de-servicio-de-prueba-de-al-menos-32-caracteres";
+
     private HttpServer servidor;
+    private String metodoRecibido;
+    private String tokenRecibido;
     private int estado;
     private String cuerpo;
 
@@ -26,6 +30,8 @@ class MascotasClientTest {
     void levantarServidor() throws IOException {
         servidor = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         servidor.createContext("/", exchange -> {
+            metodoRecibido = exchange.getRequestMethod();
+            tokenRecibido = exchange.getRequestHeaders().getFirst("X-Internal-Token");
             byte[] bytes = cuerpo.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(estado, bytes.length == 0 ? -1 : bytes.length);
@@ -43,7 +49,7 @@ class MascotasClientTest {
     }
 
     private MascotasClient cliente() {
-        return new MascotasClient("http://127.0.0.1:" + servidor.getAddress().getPort());
+        return new MascotasClient("http://127.0.0.1:" + servidor.getAddress().getPort(), TOKEN);
     }
 
     @Test
@@ -74,8 +80,41 @@ class MascotasClientTest {
 
     @Test
     void msMascotasCaidoSeTraduceAServicioNoDisponible() {
-        MascotasClient sinServidor = new MascotasClient("http://127.0.0.1:1");
+        MascotasClient sinServidor = new MascotasClient("http://127.0.0.1:1", TOKEN);
 
         assertThatThrownBy(() -> sinServidor.obtenerContacto("m1")).isInstanceOf(ServicioNoDisponibleException.class);
+    }
+
+    @Test
+    void pideElContactoPorPostYConElSecretoDeServicio() {
+        estado = 200;
+        cuerpo = "{\"mascotaId\":\"m1\",\"emailDestino\":\"dueno@example.com\"}";
+
+        cliente().obtenerContacto("m1");
+
+        /* ms-mascotas ya no atiende GET en /internal/.../contacto y rechaza las llamadas sin el secreto */
+        assertThat(metodoRecibido).isEqualTo("POST");
+        assertThat(tokenRecibido).isEqualTo(TOKEN);
+    }
+
+    @Test
+    void sinSecretoElServicioNoArranca() {
+        /* sin el secreto ms-mascotas respondia 401 y parecia una caida: mejor fallar al arrancar y decir por que */
+        for (String malo : new String[] { "", "   ", "corto" }) {
+            assertThatThrownBy(() -> new MascotasClient("http://127.0.0.1:1", malo))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("INTERNAL_API_TOKEN");
+        }
+        assertThatThrownBy(() -> new MascotasClient("http://127.0.0.1:1", null)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void unaCredencialRechazadaSeTraduceAServicioNoDisponible() {
+        estado = 401;
+        cuerpo = "";
+
+        assertThatThrownBy(() -> cliente().obtenerContacto("m1"))
+                .isInstanceOf(ServicioNoDisponibleException.class)
+                .hasMessageContaining("credencial");
     }
 }

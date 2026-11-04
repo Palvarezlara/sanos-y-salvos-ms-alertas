@@ -75,4 +75,24 @@ class MascotaReportadaListenerTest {
         org.mockito.Mockito.verify(alertaService, org.mockito.Mockito.never())
                 .crearAlerta(org.mockito.ArgumentMatchers.any());
     }
+
+    @Test
+    void crearAlerta_no_crea_nada_si_el_reporte_ya_se_cerro() {
+        // mascota.reunificada o mascota.eliminada llegaron antes (colas independientes)
+        org.mockito.Mockito.when(alertaService.mascotaCerrada("mascota-9")).thenReturn(true);
+
+        listener.crearAlerta(new MascotaReportadaEvento("mascota-9", -33.0, -70.0));
+
+        org.mockito.Mockito.verify(alertaService, org.mockito.Mockito.never()).crearAlerta(
+                org.mockito.ArgumentMatchers.any(AlertaRequestDto.class));
+    }
+
+    @Test
+    void crearAlerta_ignora_el_duplicado_creado_en_paralelo_sin_reintentar() {
+        org.mockito.Mockito.when(alertaService.crearAlerta(org.mockito.ArgumentMatchers.any(AlertaRequestDto.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("uk_alertas_activa_por_mascota"));
+
+        // no debe propagar la excepcion: si lo hiciera, SQS reintentaria y mandaria el mensaje a la DLQ
+        listener.crearAlerta(new MascotaReportadaEvento("mascota-10", -33.0, -70.0));
+    }
 }

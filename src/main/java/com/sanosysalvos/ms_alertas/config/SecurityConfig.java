@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -41,17 +42,25 @@ public class SecurityConfig {
     @Value("${cognito.client-id}")
     private String clientId;
 
+    // Swagger expone todo el contrato de la API: solo en local (SWAGGER_ENABLED=true), nunca por defecto
+    @Value("${springdoc.swagger-ui.enabled:false}")
+    private boolean swaggerHabilitado;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html")
+                    .access((autenticacion, contexto) -> new AuthorizationDecision(swaggerHabilitado))
                 // Lectura de alertas de zona/mapa es de acceso libre para invitados,
                 // igual que Home/Listado en ms-mascotas (ver CLAUDE.md). Crear,
                 // actualizar o eliminar sigue requiriendo un access_token válido.
-                .requestMatchers(HttpMethod.GET, "/alertas", "/alertas/zona").permitAll()
+                .requestMatchers(HttpMethod.GET, "/alertas/zona").permitAll()
+                // el listado completo no se pagina ni se acota por zona: publico permitia descargar toda la
+                // tabla de una vez (el frontend solo usa /alertas/zona, que tiene tope de radio)
+                .requestMatchers(HttpMethod.GET, "/alertas").hasRole("ADMINISTRADOR")
                 // Las alertas las crea y desactiva el flujo de mensajería (listeners SQS), no
                 // los usuarios: escribir a mano queda solo para administradores (grupo
                 // "Administradores" de Cognito), no para cualquier usuario con sesión.

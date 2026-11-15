@@ -23,7 +23,9 @@ import com.sanosysalvos.ms_alertas.dto.AlertaResponseDto;
 import com.sanosysalvos.ms_alertas.exception.ResourceNotFoundException;
 import com.sanosysalvos.ms_alertas.model.Alerta;
 import com.sanosysalvos.ms_alertas.model.EstadoAlerta;
+import com.sanosysalvos.ms_alertas.model.MascotaCerrada;
 import com.sanosysalvos.ms_alertas.repository.AlertaRepository;
+import com.sanosysalvos.ms_alertas.repository.MascotaCerradaRepository;
 import com.sanosysalvos.ms_alertas.service.impl.AlertaServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,6 +33,9 @@ class AlertaServiceImplTest {
 
     @Mock
     private AlertaRepository alertaRepository;
+
+    @Mock
+    private MascotaCerradaRepository mascotaCerradaRepository;
 
     private AlertaService alertaService;
 
@@ -56,7 +61,7 @@ class AlertaServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        alertaService = new AlertaServiceImpl(alertaRepository);
+        alertaService = new AlertaServiceImpl(alertaRepository, mascotaCerradaRepository);
     }
 
     @Test
@@ -113,10 +118,44 @@ class AlertaServiceImplTest {
         when(alertaRepository.findByMascotaIdAndEstado("64f1a2b3c4d5e6f7a8b9c0d1", EstadoAlerta.ACTIVA))
                 .thenReturn(List.of(activa));
 
-        alertaService.desactivarPorMascota("64f1a2b3c4d5e6f7a8b9c0d1");
+        alertaService.desactivarPorMascota("64f1a2b3c4d5e6f7a8b9c0d1", "REUNIFICADA");
 
         assertThat(activa.getEstado()).isEqualTo(EstadoAlerta.INACTIVA);
         verify(alertaRepository).saveAll(List.of(activa));
+    }
+
+    @Test
+    void desactivarPorMascota_deja_la_marca_aunque_la_alerta_todavia_no_exista() {
+        // mascota.reunificada llego antes que mascota.reportada: sin la marca, la alerta nacia activa para siempre
+        when(alertaRepository.findByMascotaIdAndEstado("m-1", EstadoAlerta.ACTIVA)).thenReturn(List.of());
+        when(mascotaCerradaRepository.existsById("m-1")).thenReturn(false);
+
+        alertaService.desactivarPorMascota("m-1", "REUNIFICADA");
+
+        ArgumentCaptor<MascotaCerrada> captor = ArgumentCaptor.forClass(MascotaCerrada.class);
+        verify(mascotaCerradaRepository).save(captor.capture());
+        assertThat(captor.getValue().getMascotaId()).isEqualTo("m-1");
+        assertThat(captor.getValue().getMotivo()).isEqualTo("REUNIFICADA");
+        assertThat(captor.getValue().getCerradaEn()).isNotNull();
+    }
+
+    @Test
+    void desactivarPorMascota_no_repite_la_marca_si_el_evento_llega_dos_veces() {
+        when(alertaRepository.findByMascotaIdAndEstado("m-1", EstadoAlerta.ACTIVA)).thenReturn(List.of());
+        when(mascotaCerradaRepository.existsById("m-1")).thenReturn(true);
+
+        alertaService.desactivarPorMascota("m-1", "ELIMINADA");
+
+        verify(mascotaCerradaRepository, never()).save(any(MascotaCerrada.class));
+    }
+
+    @Test
+    void mascotaCerrada_consulta_la_marca() {
+        when(mascotaCerradaRepository.existsById("m-1")).thenReturn(true);
+        when(mascotaCerradaRepository.existsById("m-2")).thenReturn(false);
+
+        assertThat(alertaService.mascotaCerrada("m-1")).isTrue();
+        assertThat(alertaService.mascotaCerrada("m-2")).isFalse();
     }
 
     @Test

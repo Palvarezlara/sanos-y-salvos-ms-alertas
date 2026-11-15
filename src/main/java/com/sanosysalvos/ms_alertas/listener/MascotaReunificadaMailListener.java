@@ -50,7 +50,7 @@ public class MascotaReunificadaMailListener extends SqsPollingConsumer {
     @Override
     protected void procesar(String cuerpoMensaje) throws Exception {
         MascotaReunificadaEvento evento = objectMapper.readValue(cuerpoMensaje, MascotaReunificadaEvento.class);
-        alertaService.desactivarPorMascota(evento.getMascotaId());
+        alertaService.desactivarPorMascota(evento.getMascotaId(), "REUNIFICADA");
         enviarCorreo(evento);
     }
 
@@ -58,17 +58,19 @@ public class MascotaReunificadaMailListener extends SqsPollingConsumer {
         SimpleMailMessage correo = new SimpleMailMessage();
         correo.setFrom(remitente);
         correo.setTo(evento.getEmailContacto());
-        correo.setSubject("¡" + evento.getNombreMascota() + " quedó marcada como reunificada! — Sanos y Salvos");
-        correo.setText(construirCuerpo(evento));
+        /* el nombre lo escribe el dueño: sin saltos de línea en el asunto (inyección de encabezados) */
+        String nombre = TextoSeguro.nombre(evento.getNombreMascota(), "tu mascota");
+        correo.setSubject("¡" + nombre + " quedó marcada como reunificada! — Sanos y Salvos");
+        correo.setText(construirCuerpo(nombre));
 
         mailSender.send(correo);
 
         log.info("Correo de reunificacion enviado para mascotaId={}", evento.getMascotaId());
     }
 
-    private String construirCuerpo(MascotaReunificadaEvento evento) {
+    private String construirCuerpo(String nombre) {
         return "Hola,\n\n"
-                + "Tu reporte de " + evento.getNombreMascota() + " en Sanos y Salvos quedó marcado como reunificado.\n\n"
+                + "Tu reporte de " + nombre + " en Sanos y Salvos quedó marcado como reunificado.\n\n"
                 + "Gracias por usar la plataforma y por ayudar a que las mascotas vuelvan a casa.\n\n"
                 + "— Sanos y Salvos";
     }

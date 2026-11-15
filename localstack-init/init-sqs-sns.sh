@@ -39,5 +39,9 @@ crear_cola "cola-mascota-reportada" "mascota.reportada"
 crear_cola "cola-mascota-reunificada" "mascota.reunificada"
 # aviso por correo de mensajes nuevos del chat (lo publica ms-chat, lo envia ms-alertas)
 crear_cola "cola-chat-aviso" "chat.mensaje.nuevo"
+# reportes eliminados en ms-mascotas: sus alertas de zona dejan de mostrarse
+crear_cola "cola-mascota-eliminada" "mascota.eliminada"
+# la misma baja la consume ms-chat para borrar las conversaciones del reporte (cada servicio su cola)
+crear_cola "cola-chat-mascota-eliminada" "mascota.eliminada"
 
 echo "LocalStack listo."

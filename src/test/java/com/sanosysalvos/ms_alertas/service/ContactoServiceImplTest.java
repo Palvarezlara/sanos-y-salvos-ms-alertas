@@ -22,6 +22,8 @@ import com.sanosysalvos.ms_alertas.dto.MascotaContactoDto;
 import com.sanosysalvos.ms_alertas.exception.ResourceNotFoundException;
 import com.sanosysalvos.ms_alertas.messaging.SnsEventPublisher;
 import com.sanosysalvos.ms_alertas.service.impl.ContactoServiceImpl;
+import com.sanosysalvos.ms_alertas.service.impl.LimitadorContactos;
+import com.sanosysalvos.ms_alertas.exception.DemasiadasSolicitudesException;
 
 @ExtendWith(MockitoExtension.class)
 class ContactoServiceImplTest {
@@ -36,7 +38,7 @@ class ContactoServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        contactoService = new ContactoServiceImpl(mascotasClient, snsEventPublisher);
+        contactoService = new ContactoServiceImpl(mascotasClient, snsEventPublisher, new LimitadorContactos(10, 5, 60));
     }
 
     private ContactoRequestDto crearRequest() {
@@ -78,5 +80,19 @@ class ContactoServiceImplTest {
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(snsEventPublisher, never()).publicar(any(String.class), any(Object.class));
+    }
+
+    @Test
+    void contactar_se_rechaza_al_superar_el_limite_y_no_consulta_a_ms_mascotas() {
+        contactoService = new ContactoServiceImpl(mascotasClient, snsEventPublisher, new LimitadorContactos(10, 1, 60));
+        MascotaContactoDto destino = new MascotaContactoDto();
+        destino.setEmailDestino("duena@example.com");
+        when(mascotasClient.obtenerContacto("64f1a2b3c4d5e6f7a8b9c0d1")).thenReturn(destino);
+
+        contactoService.contactar(crearRequest());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> contactoService.contactar(crearRequest()))
+                .isInstanceOf(DemasiadasSolicitudesException.class);
+        org.mockito.Mockito.verify(mascotasClient, org.mockito.Mockito.times(1)).obtenerContacto("64f1a2b3c4d5e6f7a8b9c0d1");
     }
 }

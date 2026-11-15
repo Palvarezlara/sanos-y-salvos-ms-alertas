@@ -18,10 +18,13 @@ public interface AlertaService {
 
     void eliminarAlerta(Long id);
 
-    // Se llama al consumir mascota.reunificada: una mascota ya reunida no
-    // debe seguir generando avisos de zona (ni en el mapa ni en el aviso de
-    // proximidad del frontend).
-    void desactivarPorMascota(String mascotaId);
+    // Se llama al consumir mascota.reunificada o mascota.eliminada: un reporte cerrado no
+    // debe seguir generando avisos de zona (ni en el mapa ni en el aviso de proximidad del
+    // frontend). Además deja una marca para que un mascota.reportada que llegue después
+    // (las colas son independientes) no cree una alerta que nadie desactivaría.
+    void desactivarPorMascota(String mascotaId, String motivo);
+
+    boolean mascotaCerrada(String mascotaId);
 
     boolean existeActivaParaMascota(String mascotaId);
 }

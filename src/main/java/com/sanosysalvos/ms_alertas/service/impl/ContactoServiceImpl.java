@@ -21,14 +21,19 @@ public class ContactoServiceImpl implements ContactoService {
 
     private final MascotasClient mascotasClient;
     private final SnsEventPublisher snsEventPublisher;
+    private final LimitadorContactos limitador;
 
-    public ContactoServiceImpl(MascotasClient mascotasClient, SnsEventPublisher snsEventPublisher) {
+    public ContactoServiceImpl(MascotasClient mascotasClient, SnsEventPublisher snsEventPublisher,
+            LimitadorContactos limitador) {
         this.mascotasClient = mascotasClient;
         this.snsEventPublisher = snsEventPublisher;
+        this.limitador = limitador;
     }
 
     @Override
     public void contactar(ContactoRequestDto dto) {
+        // endpoint publico: se limita antes de consultar a ms-mascotas (tambien frena el sondeo de ids)
+        limitador.registrar(dto.getMascotaId(), dto.getEmailContacto());
         MascotaContactoDto destino = mascotasClient.obtenerContacto(dto.getMascotaId());
         if (destino == null || destino.getEmailDestino() == null || destino.getEmailDestino().isBlank()) {
             throw new ResourceNotFoundException("No se encontró un contacto para la mascota " + dto.getMascotaId());

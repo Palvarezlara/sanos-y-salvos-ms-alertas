@@ -3,6 +3,9 @@ package com.sanosysalvos.ms_alertas.messaging;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 
+import java.time.Duration;
+import java.time.Instant;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +35,8 @@ public abstract class SqsPollingConsumer {
 
     private Thread hilo;
     private volatile boolean activo;
+    private volatile boolean iniciado;
+    private volatile Instant ultimoSondeoExitoso = Instant.EPOCH;
 
     protected SqsPollingConsumer(SqsClient sqsClient, String queueUrl, boolean autoArranque) {
         this.sqsClient = sqsClient;
@@ -46,7 +51,14 @@ public abstract class SqsPollingConsumer {
             // levantaría un hilo real intentando conectarse a una cola.
             return;
         }
+        if (queueUrl == null || queueUrl.isBlank()) {
+            // cola opcional (ej. Terraform todavia no la define): ese consumidor queda apagado, el resto sigue
+            log.warn("{} desactivado: no hay URL de cola configurada", getClass().getSimpleName());
+            return;
+        }
         activo = true;
+        iniciado = true;
+        ultimoSondeoExitoso = Instant.now();
         hilo = new Thread(this::escuchar, getClass().getSimpleName());
         hilo.setDaemon(true);
         hilo.start();
@@ -73,6 +85,8 @@ public abstract class SqsPollingConsumer {
                         .visibilityTimeout(VISIBILIDAD_SEGUNDOS)
                         .build());
 
+                ultimoSondeoExitoso = Instant.now();
+
                 for (Message mensaje : respuesta.messages()) {
                     procesarYBorrar(mensaje);
                 }
@@ -81,6 +95,11 @@ public abstract class SqsPollingConsumer {
                     log.error("Error consultando la cola, reintenta en 5s", e);
                     dormir(5000);
                 }
+            } catch (Error e) {
+                // OutOfMemoryError y similares: el hilo muere, pero ya no en silencio (el health pasa a DOWN)
+                activo = false;
+                log.error("Consumidor SQS detenido por un error fatal", e);
+                throw e;
             }
         }
     }
@@ -103,6 +122,20 @@ public abstract class SqsPollingConsumer {
         } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /** true si este consumidor arrancó (cola configurada y autoarranque activo). */
+    public boolean estaIniciado() {
+        return iniciado;
+    }
+
+    /** Hilo vivo y con un sondeo exitoso reciente; falla con una URL incorrecta, sin permisos o sin red. */
+    public boolean estaSano(Duration tolerancia) {
+        return hilo != null && hilo.isAlive() && ultimoSondeoExitoso.plus(tolerancia).isAfter(Instant.now());
+    }
+
+    public String nombre() {
+        return getClass().getSimpleName();
     }
 
     protected abstract void procesar(String cuerpoMensaje) throws Exception;

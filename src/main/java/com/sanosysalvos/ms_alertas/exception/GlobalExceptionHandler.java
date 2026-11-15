@@ -66,6 +66,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body(HttpStatus.NOT_FOUND, "Recurso no encontrado"));
     }
 
+    @ExceptionHandler(DemasiadasSolicitudesException.class)
+    public ResponseEntity<Map<String, Object>> handleDemasiadasSolicitudes(DemasiadasSolicitudesException ex) {
+        log.warn("Limite de uso superado, reintentar en {} s", ex.getReintentarEnSegundos());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getReintentarEnSegundos()))
+                .body(body(HttpStatus.TOO_MANY_REQUESTS, "Demasiadas solicitudes, intenta más tarde"));
+    }
+
     @ExceptionHandler(ServicioNoDisponibleException.class)
     public ResponseEntity<Map<String, Object>> handleServicioNoDisponible(ServicioNoDisponibleException ex) {
         log.warn("Dependencia no disponible: {}", ex.getMessage());
